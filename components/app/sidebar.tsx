@@ -8,6 +8,8 @@ import {
   Store,
   Briefcase,
   Sparkles,
+  BarChart3,
+  CreditCard,
 } from "lucide-react"
 
 const navItems = [
@@ -16,6 +18,12 @@ const navItems = [
     href: "/dashboard",
     icon: LayoutDashboard,
     description: "Content Strategy Generator",
+  },
+  {
+    title: "Analytics",
+    href: "/analytics",
+    icon: BarChart3,
+    description: "Growth Metrics",
   },
   {
     title: "Market",
@@ -29,6 +37,12 @@ const navItems = [
     icon: Briefcase,
     description: "Track Investments",
   },
+  {
+    title: "Billing",
+    href: "/billing",
+    icon: CreditCard,
+    description: "Plans & Usage",
+  },
 ]
 
 export function AppSidebar() {
@@ -41,8 +55,8 @@ export function AppSidebar() {
           <Sparkles className="h-5 w-5 text-white" />
         </div>
         <div>
-          <span className="text-lg font-bold text-gradient">Creator Capital</span>
-          <p className="text-xs text-muted-foreground">Markets OS</p>
+          <span className="text-lg font-bold text-gradient">CreatorOS</span>
+          <p className="text-xs text-muted-foreground">AI Growth Engine</p>
         </div>
       </div>
 

@@ -81,6 +81,13 @@ export function DashboardClient() {
     setGenerating(true)
     setStrategy(null)
 
+    // Track generate click
+    fetch('/api/events/track', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'generate_click', metadata: { niche, platform } }),
+    }).catch(() => {})
+
     try {
       const response = await fetch("/api/generate", {
         method: "POST",

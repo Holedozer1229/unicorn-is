@@ -1,25 +1,64 @@
+"use client"
+
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import {
   Sparkles,
-  Lightbulb,
   TrendingUp,
-  Briefcase,
-  BarChart3,
   ArrowRight,
   Zap,
   DollarSign,
   Users,
+  Check,
+  Play,
+  BarChart3,
+  Rocket,
+  Star,
 } from "lucide-react"
 
+const ctaVariants = [
+  { id: '1', text: 'Start Free' },
+  { id: '2', text: 'Go Viral Today' },
+  { id: '3', text: 'Get Your First Viral Post' },
+  { id: '4', text: 'Turn Content into Income' },
+]
+
 export default function HomePage() {
+  const [activeCTA, setActiveCTA] = useState(ctaVariants[0])
+  const [isTracked, setIsTracked] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/growth/stats')
+      .then(res => res.json())
+      .then(data => {
+        if (data.bestCTA) {
+          const variant = ctaVariants.find(v => v.id === data.bestCTA.id)
+          if (variant) setActiveCTA(variant)
+        }
+      })
+      .catch(() => {})
+
+    if (!isTracked) {
+      fetch('/api/events/track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'page_view' }),
+      }).catch(() => {})
+      setIsTracked(true)
+    }
+  }, [isTracked])
+
+  const handleCTAClick = () => {
+    fetch('/api/events/track', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'cta_click', ctaId: activeCTA.id }),
+    }).catch(() => {})
+  }
+
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-sm">
@@ -28,15 +67,18 @@ export default function HomePage() {
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent">
               <Sparkles className="h-5 w-5 text-white" />
             </div>
-            <div>
-              <span className="text-lg font-bold text-gradient">Creator Capital</span>
-              <span className="ml-2 text-sm text-muted-foreground">Markets OS</span>
-            </div>
+            <span className="text-lg font-bold text-gradient">CreatorOS</span>
           </Link>
           <div className="flex items-center gap-4">
-            <Button asChild className="btn-gradient">
+            <Link href="/analytics" className="text-sm text-muted-foreground hover:text-foreground">
+              Analytics
+            </Link>
+            <Link href="/billing" className="text-sm text-muted-foreground hover:text-foreground">
+              Pricing
+            </Link>
+            <Button asChild className="btn-gradient" onClick={handleCTAClick}>
               <Link href="/dashboard">
-                Launch App
+                {activeCTA.text}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
@@ -45,171 +87,287 @@ export default function HomePage() {
       </header>
 
       <main className="flex-1">
-        {/* Hero Section */}
-        <section className="container mx-auto px-4 py-20 text-center md:py-32">
-          <Badge variant="secondary" className="mb-6 bg-primary/10 text-primary">
-            AI-Powered Creator Intelligence
-          </Badge>
-          <h1 className="mx-auto mb-6 max-w-4xl text-balance text-4xl font-bold tracking-tight md:text-6xl lg:text-7xl">
-            The Operating System for{" "}
-            <span className="text-gradient">Creator Capital Markets</span>
-          </h1>
-          <p className="mx-auto mb-8 max-w-2xl text-pretty text-lg text-muted-foreground md:text-xl">
-            Generate viral content strategies with AI, discover top-performing creators,
-            track growth metrics, and optimize your monetization - all in one platform.
-          </p>
-          <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <Button asChild size="lg" className="btn-gradient">
-              <Link href="/dashboard">
-                <Zap className="mr-2 h-5 w-5" />
-                Start Generating Content
-              </Link>
-            </Button>
-            <Button asChild variant="outline" size="lg">
-              <Link href="/market">
-                <Users className="mr-2 h-5 w-5" />
-                Explore Creator Market
-              </Link>
-            </Button>
+        <section className="relative overflow-hidden">
+          <div className="absolute inset-0 starfield opacity-30" />
+          <div className="container relative mx-auto px-4 py-20 text-center md:py-32">
+            <Badge variant="secondary" className="mb-6 bg-primary/10 text-primary border-primary/20">
+              AI-Powered Growth Engine
+            </Badge>
+            <h1 className="mx-auto mb-6 max-w-4xl text-balance text-4xl font-bold tracking-tight md:text-6xl lg:text-7xl">
+              Go Viral Every Day{" "}
+              <span className="text-gradient">with AI</span>
+            </h1>
+            <p className="mx-auto mb-8 max-w-2xl text-pretty text-lg text-muted-foreground md:text-xl">
+              Your personal AI growth engine. Generate viral content, track performance, 
+              and turn your audience into income - automatically.
+            </p>
+            <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
+              <Button asChild size="lg" className="btn-gradient glow-primary text-lg px-8" onClick={handleCTAClick}>
+                <Link href="/dashboard">
+                  <Zap className="mr-2 h-5 w-5" />
+                  {activeCTA.text}
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="lg" className="text-lg">
+                <Link href="#features">
+                  <Play className="mr-2 h-5 w-5" />
+                  See Features
+                </Link>
+              </Button>
+            </div>
+            <p className="mt-4 text-sm text-muted-foreground">
+              No credit card required. Start creating in 30 seconds.
+            </p>
           </div>
         </section>
 
-        {/* Features Section */}
+        <section className="border-y border-border/50 bg-muted/5 py-8">
+          <div className="container mx-auto px-4">
+            <div className="flex flex-wrap items-center justify-center gap-8 md:gap-16">
+              <div className="text-center">
+                <p className="text-3xl font-bold text-gradient">10,000+</p>
+                <p className="text-sm text-muted-foreground">Active Creators</p>
+              </div>
+              <div className="text-center">
+                <p className="text-3xl font-bold text-gradient">2.5M+</p>
+                <p className="text-sm text-muted-foreground">Posts Generated</p>
+              </div>
+              <div className="text-center">
+                <p className="text-3xl font-bold text-gradient">500M+</p>
+                <p className="text-sm text-muted-foreground">Views Driven</p>
+              </div>
+              <div className="text-center">
+                <p className="text-3xl font-bold text-gradient">4.9/5</p>
+                <p className="text-sm text-muted-foreground">Creator Rating</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="features" className="py-20">
+          <div className="container mx-auto px-4">
+            <div className="mb-12 text-center">
+              <h2 className="mb-4 text-3xl font-bold tracking-tight md:text-4xl">
+                Your Complete Growth Stack
+              </h2>
+              <p className="mx-auto max-w-2xl text-muted-foreground">
+                Everything you need to go viral, grow your audience, and monetize your content.
+              </p>
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              <Card className="cosmic-card p-6">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+                  <Sparkles className="h-6 w-6 text-primary" />
+                </div>
+                <h3 className="mb-2 text-xl font-semibold">AI Content Factory</h3>
+                <p className="text-muted-foreground">
+                  Generate viral hooks, scripts, captions, and CTAs daily. 
+                  Our AI learns what works in your niche.
+                </p>
+              </Card>
+
+              <Card className="cosmic-card p-6">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-accent/10">
+                  <TrendingUp className="h-6 w-6 text-accent" />
+                </div>
+                <h3 className="mb-2 text-xl font-semibold">Growth Analytics</h3>
+                <p className="text-muted-foreground">
+                  Track views, signups, and conversions. See exactly what content 
+                  drives the most growth.
+                </p>
+              </Card>
+
+              <Card className="cosmic-card p-6">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-green-500/10">
+                  <DollarSign className="h-6 w-6 text-green-500" />
+                </div>
+                <h3 className="mb-2 text-xl font-semibold">Monetization Engine</h3>
+                <p className="text-muted-foreground">
+                  Turn followers into revenue with AI-optimized CTAs, 
+                  pricing strategies, and conversion funnels.
+                </p>
+              </Card>
+
+              <Card className="cosmic-card p-6">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-yellow-500/10">
+                  <Rocket className="h-6 w-6 text-yellow-500" />
+                </div>
+                <h3 className="mb-2 text-xl font-semibold">Auto Optimization</h3>
+                <p className="text-muted-foreground">
+                  AI continuously tests and improves your content, CTAs, 
+                  and funnels for maximum conversion.
+                </p>
+              </Card>
+
+              <Card className="cosmic-card p-6">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-purple-500/10">
+                  <Users className="h-6 w-6 text-purple-500" />
+                </div>
+                <h3 className="mb-2 text-xl font-semibold">Creator Market</h3>
+                <p className="text-muted-foreground">
+                  Discover top creators, analyze their strategies, 
+                  and find collaboration opportunities.
+                </p>
+              </Card>
+
+              <Card className="cosmic-card p-6">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-blue-500/10">
+                  <BarChart3 className="h-6 w-6 text-blue-500" />
+                </div>
+                <h3 className="mb-2 text-xl font-semibold">Content Scheduler</h3>
+                <p className="text-muted-foreground">
+                  Schedule your content at optimal times. 
+                  Never miss a posting window again.
+                </p>
+              </Card>
+            </div>
+          </div>
+        </section>
+
         <section className="bg-muted/10 py-20">
           <div className="container mx-auto px-4">
             <div className="mb-12 text-center">
               <h2 className="mb-4 text-3xl font-bold tracking-tight md:text-4xl">
-                Everything You Need to Dominate
+                Simple, Transparent Pricing
               </h2>
               <p className="mx-auto max-w-2xl text-muted-foreground">
-                Powerful AI tools and market intelligence to help creators go viral,
-                grow their audience, and maximize monetization.
+                Start free and upgrade as you grow. No hidden fees.
               </p>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-              <Card className="cosmic-card transition-all hover:scale-[1.02]">
-                <CardHeader>
-                  <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                    <Lightbulb className="h-6 w-6 text-primary" />
-                  </div>
-                  <CardTitle className="text-lg">AI Content Strategy</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                    Generate viral ideas, hooks, scripts, captions, and monetization
-                    strategies tailored to your niche and platform.
-                  </p>
-                </CardContent>
+            <div className="mx-auto grid max-w-4xl gap-6 md:grid-cols-3">
+              <Card className="cosmic-card p-6">
+                <h3 className="mb-2 text-xl font-semibold">Free</h3>
+                <p className="mb-4 text-3xl font-bold">$0<span className="text-sm text-muted-foreground">/mo</span></p>
+                <ul className="mb-6 space-y-2 text-sm text-muted-foreground">
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-green-500" /> 5 AI generations/day
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-green-500" /> Basic analytics
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-green-500" /> 1 platform
+                  </li>
+                </ul>
+                <Button asChild variant="outline" className="w-full">
+                  <Link href="/dashboard">Get Started</Link>
+                </Button>
               </Card>
 
-              <Card className="cosmic-card transition-all hover:scale-[1.02]">
-                <CardHeader>
-                  <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-lg bg-accent/10">
-                    <TrendingUp className="h-6 w-6 text-accent" />
-                  </div>
-                  <CardTitle className="text-lg">Creator Market</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                    Discover top performers and trending creators with growth scores,
-                    engagement metrics, and simulated market values.
-                  </p>
-                </CardContent>
+              <Card className="cosmic-card relative p-6 border-primary/50">
+                <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary">Most Popular</Badge>
+                <h3 className="mb-2 text-xl font-semibold">Pro</h3>
+                <p className="mb-4 text-3xl font-bold">$29<span className="text-sm text-muted-foreground">/mo</span></p>
+                <ul className="mb-6 space-y-2 text-sm text-muted-foreground">
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-green-500" /> Unlimited generations
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-green-500" /> Full analytics
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-green-500" /> All platforms
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-green-500" /> Content scheduler
+                  </li>
+                </ul>
+                <Button asChild className="w-full btn-gradient">
+                  <Link href="/billing">Upgrade to Pro</Link>
+                </Button>
               </Card>
 
-              <Card className="cosmic-card transition-all hover:scale-[1.02]">
-                <CardHeader>
-                  <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-lg bg-green-500/10">
-                    <Briefcase className="h-6 w-6 text-green-500" />
-                  </div>
-                  <CardTitle className="text-lg">Portfolio Tracking</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                    Build your creator portfolio, track total growth, ROI, and
-                    engagement rates with beautiful performance charts.
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="cosmic-card transition-all hover:scale-[1.02]">
-                <CardHeader>
-                  <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-lg bg-yellow-500/10">
-                    <DollarSign className="h-6 w-6 text-yellow-500" />
-                  </div>
-                  <CardTitle className="text-lg">Monetization AI</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                    Get personalized monetization strategies with revenue estimates
-                    and difficulty ratings for your specific niche.
-                  </p>
-                </CardContent>
+              <Card className="cosmic-card p-6">
+                <h3 className="mb-2 text-xl font-semibold">Enterprise</h3>
+                <p className="mb-4 text-3xl font-bold">Custom</p>
+                <ul className="mb-6 space-y-2 text-sm text-muted-foreground">
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-green-500" /> Everything in Pro
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-green-500" /> Team collaboration
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-green-500" /> API access
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-green-500" /> Dedicated support
+                  </li>
+                </ul>
+                <Button asChild variant="outline" className="w-full">
+                  <Link href="/billing">Contact Sales</Link>
+                </Button>
               </Card>
             </div>
           </div>
         </section>
 
-        {/* How It Works */}
         <section className="py-20">
           <div className="container mx-auto px-4">
             <div className="mb-12 text-center">
               <h2 className="mb-4 text-3xl font-bold tracking-tight md:text-4xl">
-                How It Works
+                Creators Love Us
               </h2>
-              <p className="mx-auto max-w-2xl text-muted-foreground">
-                Three simple steps to unlock your creator potential
-              </p>
             </div>
 
-            <div className="grid gap-8 md:grid-cols-3">
-              <div className="text-center">
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-2xl font-bold text-primary">
-                  1
-                </div>
-                <h3 className="mb-2 text-xl font-semibold">Enter Your Niche</h3>
-                <p className="text-muted-foreground">
-                  Tell us your content niche and preferred platform (TikTok, Instagram, or YouTube).
-                </p>
-              </div>
-
-              <div className="text-center">
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 text-2xl font-bold text-accent">
-                  2
-                </div>
-                <h3 className="mb-2 text-xl font-semibold">Generate Strategy</h3>
-                <p className="text-muted-foreground">
-                  AI generates viral ideas, hooks, scripts, captions, and monetization plans instantly.
-                </p>
-              </div>
-
-              <div className="text-center">
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10 text-2xl font-bold text-green-500">
-                  3
-                </div>
-                <h3 className="mb-2 text-xl font-semibold">Track & Grow</h3>
-                <p className="text-muted-foreground">
-                  Discover top creators in the market and build your portfolio to track performance.
-                </p>
-              </div>
+            <div className="grid gap-6 md:grid-cols-3">
+              {[
+                {
+                  name: "Sarah M.",
+                  handle: "@sarahcreates",
+                  text: "Went from 1K to 100K followers in 3 months using CreatorOS. The AI hooks are insane.",
+                  avatar: "S",
+                },
+                {
+                  name: "Marcus J.",
+                  handle: "@marcusmoney",
+                  text: "Finally hit $10K/month from my content. The monetization strategies actually work.",
+                  avatar: "M",
+                },
+                {
+                  name: "Emma T.",
+                  handle: "@emmatech",
+                  text: "I post 3x more content now with 10x less effort. This is the future of content creation.",
+                  avatar: "E",
+                },
+              ].map((testimonial, i) => (
+                <Card key={i} className="cosmic-card p-6">
+                  <div className="mb-4 flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/20 text-primary font-bold">
+                      {testimonial.avatar}
+                    </div>
+                    <div>
+                      <p className="font-semibold">{testimonial.name}</p>
+                      <p className="text-sm text-muted-foreground">{testimonial.handle}</p>
+                    </div>
+                  </div>
+                  <p className="text-muted-foreground">{testimonial.text}</p>
+                  <div className="mt-4 flex text-yellow-500">
+                    {[...Array(5)].map((_, j) => (
+                      <Star key={j} className="h-4 w-4 fill-current" />
+                    ))}
+                  </div>
+                </Card>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* CTA Section */}
         <section className="bg-gradient-to-r from-primary/20 via-accent/10 to-primary/20 py-20">
           <div className="container mx-auto px-4 text-center">
             <h2 className="mb-4 text-3xl font-bold tracking-tight md:text-4xl">
               Ready to Go Viral?
             </h2>
             <p className="mx-auto mb-8 max-w-2xl text-muted-foreground">
-              Join the AI-powered platform that helps creators generate viral content,
-              track growth, and optimize monetization.
+              Join 10,000+ creators who are growing faster with AI.
+              Get your first viral post in under 30 seconds.
             </p>
-            <Button asChild size="lg" className="btn-gradient">
+            <Button asChild size="lg" className="btn-gradient glow-primary text-lg px-8" onClick={handleCTAClick}>
               <Link href="/dashboard">
-                Launch Creator Capital OS
+                <Zap className="mr-2 h-5 w-5" />
+                {activeCTA.text}
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Link>
             </Button>
@@ -223,10 +381,10 @@ export default function HomePage() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent">
               <Sparkles className="h-4 w-4 text-white" />
             </div>
-            <span className="font-bold">Creator Capital Markets OS</span>
+            <span className="font-bold">CreatorOS</span>
           </div>
           <p className="text-sm text-muted-foreground">
-            Built for creators, powered by AI.
+            Built with CreatorOS - Your AI Growth Engine
           </p>
         </div>
       </footer>
