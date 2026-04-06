@@ -1,92 +1,92 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { scoreIdea } from '@/lib/ai';
 import { rateLimit } from '@/lib/rate-limit';
 import { TIERS } from '@/lib/tier';
-import { z } from 'zod'; // Recommended: add via npm install zod
+import { z } from 'zod';
+import { runHolographicQAOA, deriveIdeaGraph } from '@/lib/holographic';
+import { callSphinxOSStream } from '@/lib/sphinxos'; // New helper for SphinxOS
 
-// Input validation schema
 const ScoreRequestSchema = z.object({
-  idea: z.string()
-    .min(10, 'Idea must be at least 10 characters long')
-    .max(2000, 'Idea must not exceed 2000 characters'),
+  idea: z.string().min(10).max(2000),
   userId: z.string().optional().default('anon'),
 });
 
-// Optional: Configure dynamic behavior if needed
-export const dynamic = 'force-dynamic'; // Ensures fresh execution per request
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
-/**
- * POST /api/score
- * Scores a user-submitted idea with AI and enforces tier-based rate limits.
- */
 export async function POST(request: NextRequest) {
   try {
-    // Parse and validate incoming JSON body
     const body = await request.json();
     const { idea, userId = 'anon' } = ScoreRequestSchema.parse(body);
 
-    // TODO: Replace hardcoded tier with real user lookup (e.g., from database or auth session)
-    const tier = 'free'; // Fetch dynamically in production, e.g., via Supabase or Clerk
+    const tier = 'free'; // TODO: Replace with authenticated user tier lookup
     const tierConfig = TIERS[tier];
 
-    if (!tierConfig) {
+    if (!tierConfig || !rateLimit(userId, tierConfig.limit)) {
       return NextResponse.json(
-        { error: 'Invalid tier configuration' },
-        { status: 500 }
-      );
-    }
-
-    // Enforce rate limit
-    const isAllowed = rateLimit(userId, tierConfig.limit);
-    if (!isAllowed) {
-      return NextResponse.json(
-        {
-          error: 'Rate limit reached. Please upgrade to Pro for higher limits.',
-          tier: tier,
-          limit: tierConfig.limit,
-        },
+        { error: 'Rate limit reached. Upgrade to Pro.', tier, limit: tierConfig.limit },
         { status: 429 }
       );
     }
 
-    // Perform AI scoring (assumes scoreIdea returns { score: number, feedback?: string, ... })
-    const result = await scoreIdea(idea);
+    // Derive graph representation of the idea (core holographic input)
+    const ideaGraph = deriveIdeaGraph(idea);
 
-    // Optional: Log successful scoring for analytics (add your logging service here)
-    // console.log(`Idea scored for user ${userId}: ${result.score}`);
+    // Parallel: SphinxOS for narrative + Holographic QAOA for structural optimization
+    const [sphinxStream, holographicResult] = await Promise.all([
+      callSphinxOSStream(idea),
+      runHolographicQAOA(ideaGraph, { p: 3, lambdaHolo: 0.15 }),
+    ]);
 
-    return NextResponse.json({
-      success: true,
-      ...result,
-      shareText: generateShareText(result.score), // Include shareable text in response
+    const finalScore = Math.round(holographicResult.optimalScore);
+
+    // Stream fused response
+    const encoder = new TextEncoder();
+    const readableStream = new ReadableStream({
+      async start(controller) {
+        const reader = sphinxStream.getReader();
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            controller.enqueue(value);
+          }
+        } catch (e) {
+          console.error('SphinxOS stream error:', e);
+        }
+
+        // Append holographic optimization summary
+        const holoSummary = `\n\n🔬 Holographic QAOA Analysis (UnicornOS Core):\n` +
+          `Optimized Viral Score: ${finalScore}/100\n` +
+          `Holographic Penalty Applied: Minimal surface regularization for structural coherence.\n` +
+          `Key Insight: ${holographicResult.insight || 'Enhanced convergence on innovation landscape.'}`;
+
+        controller.enqueue(encoder.encode(holoSummary));
+        controller.close();
+      },
+    });
+
+    return new Response(readableStream, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
     });
 
   } catch (error) {
-    // Differentiate validation errors from unexpected issues
     if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Invalid input', details: error.errors },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid input', details: error.errors }, { status: 400 });
     }
-
-    console.error('Scoring route error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error while scoring idea' },
-      { status: 500 }
-    );
+    console.error('UnicornOS Core Error:', error);
+    return NextResponse.json({ error: 'Holographic scoring unavailable' }, { status: 500 });
   }
 }
 
-/**
- * Generates a shareable text for social media or viral promotion.
- * Moved to a pure utility function for easier testing and reuse.
- */
 export function generateShareText(score: number): string {
-  return `I just tested my idea on Unicorn OS.
+  return `My idea achieved a holographic-optimized score on UnicornOS (SphinxOS + Holographic QAOA):
 
 🔥 Viral Score: ${score}/100
 
-Think it will blow up? 👇
-https://unicorn-saas.vercel.app`;
+Powered by tensor-network holographic regularization.
+Test yours at unicorn-saas.vercel.app`;
 }
