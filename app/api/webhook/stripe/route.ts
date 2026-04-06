@@ -1,44 +1,102 @@
-import { NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
-import { getUserTier } from "@/lib/billing/getUserTier"
-import { enforceAICap } from "@/lib/billing/enforceLimit"
+import { NextRequest, NextResponse } from 'next/server';
+import { stripe } from '@/lib/stripe';
+import { createClient } from '@/utils/supabase/server'; // Server client for webhooks
+import Stripe from 'stripe';
 
-export async function POST(req: Request) {
-  const supabase = await createClient()
+const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+export async function POST(request: NextRequest) {
+  const body = await request.text();
+  const signature = request.headers.get('stripe-signature')!;
 
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  let event: Stripe.Event;
+
+  try {
+    event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+  } catch (err: any) {
+    console.error(`Webhook signature verification failed: ${err.message}`);
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
   }
 
-  const { data: subscription } = await supabase
-    .from("subscriptions")
-    .select("*")
-    .eq("user_id", user.id)
-    .single()
+  const supabase = createClient();
 
-  const tier = getUserTier(subscription)
+  try {
+    switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object as Stripe.Checkout.Session;
+        const customerId = session.customer as string;
+        const userId = session.metadata?.user_id;
 
-  const limitCheck = await enforceAICap(user.id, tier)
+        if (userId) {
+          // Update profile with Stripe customer ID
+          await supabase
+            .from('profiles')
+            .update({ 
+              stripe_customer_id: customerId,
+              tier: 'creator' // Default to Creator on first checkout
+            })
+            .eq('id', userId);
+        }
+        break;
+      }
 
-  if (!limitCheck.allowed) {
-    return NextResponse.json(
-      {
-        error: "Monthly limit reached",
-        usage: limitCheck.usage,
-        limit: limitCheck.limit,
-      },
-      { status: 429 }
-    )
+      case 'customer.subscription.created':
+      case 'customer.subscription.updated': {
+        const subscription = event.data.object as Stripe.Subscription;
+        const customerId = subscription.customer as string;
+
+        // Find user by stripe_customer_id
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('stripe_customer_id', customerId)
+          .single();
+
+        if (profile) {
+          const tier = subscription.status === 'active' ? 'pro' : 'creator'; // Map based on your price tiers
+          await supabase
+            .from('profiles')
+            .update({ 
+              tier,
+              subscription_id: subscription.id,
+              subscription_status: subscription.status
+            })
+            .eq('id', profile.id);
+        }
+        break;
+      }
+
+      case 'customer.subscription.deleted': {
+        const subscription = event.data.object as Stripe.Subscription;
+        const customerId = subscription.customer as string;
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('stripe_customer_id', customerId)
+          .single();
+
+        if (profile) {
+          await supabase
+            .from('profiles')
+            .update({ 
+              tier: 'free',
+              subscription_id: null,
+              subscription_status: 'canceled'
+            })
+            .eq('id', profile.id);
+        }
+        break;
+      }
+
+      // Add more events as needed (e.g., invoice.payment_failed, customer.subscription.paused)
+      default:
+        console.log(`Unhandled event type: ${event.type}`);
+    }
+
+    return NextResponse.json({ received: true });
+  } catch (error) {
+    console.error('Webhook processing error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-
-  // 🔥 YOUR AI LOGIC HERE
-  const result = {
-    message: "AI response generated successfully 🦄",
-  }
-
-  return NextResponse.json(result)
 }
