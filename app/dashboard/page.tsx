@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import UnicornOSLogo from "@/components/ui/UnicornOSLogo";
 import { generateShareText } from "@/lib/utils";
+import { createClient } from "@/utils/supabase/client"; // Adjust path if your Supabase client is elsewhere
 
 export default function UnicornOSDashboard() {
   const [idea, setIdea] = useState("");
@@ -11,8 +12,43 @@ export default function UnicornOSDashboard() {
   const [step, setStep] = useState(0);
   const [animatedScore, setAnimatedScore] = useState(0);
   const [streamedText, setStreamedText] = useState("");
-  const [customerId, setCustomerId] = useState<string | null>(null); // Replace with real auth/DB fetch
+  const [customerId, setCustomerId] = useState<string | null>(null);
   const [userTier, setUserTier] = useState<'free' | 'creator' | 'pro'>('free');
+  const [isLoadingUser, setIsLoadingUser] = useState(true);
+
+  const supabase = createClient();
+
+  // Fetch user data (including stripe_customer_id and tier) on mount
+  useEffect(() => {
+    async function loadUserData() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          // Redirect to login if needed
+          window.location.href = "/auth/login";
+          return;
+        }
+
+        // Fetch profile with stripe_customer_id and tier
+        const { data: profile } = await supabase
+          .from('profiles') // or 'users' table – adjust to your schema
+          .select('stripe_customer_id, tier')
+          .eq('id', user.id)
+          .single();
+
+        if (profile) {
+          setCustomerId(profile.stripe_customer_id || null);
+          setUserTier((profile.tier as 'free' | 'creator' | 'pro') || 'free');
+        }
+      } catch (error) {
+        console.error("Failed to load user data:", error);
+      } finally {
+        setIsLoadingUser(false);
+      }
+    }
+
+    loadUserData();
+  }, [supabase]);
 
   const steps = [
     "Scanning attention graphs...",
@@ -88,12 +124,12 @@ export default function UnicornOSDashboard() {
   // Open Stripe Customer Portal
   const openBillingPortal = async () => {
     if (!customerId) {
-      alert("Please log in to manage billing.");
+      alert("No billing account linked. Please upgrade to Creator or Pro.");
       return;
     }
 
     if (userTier === 'free') {
-      alert("Upgrade to Creator or Pro to access billing management.");
+      alert("Upgrade to Creator or Pro to manage billing.");
       return;
     }
 
@@ -136,7 +172,8 @@ export default function UnicornOSDashboard() {
           <div className="hidden sm:block px-4 py-1 text-xs tracking-widest border border-cyan-400/30 rounded-full text-cyan-400">PRIVATE BETA</div>
           <button 
             onClick={openBillingPortal}
-            className="px-6 py-2.5 text-sm font-medium border border-white/30 hover:border-cyan-400 rounded-2xl transition-all active:bg-cyan-400/10"
+            disabled={isLoadingUser}
+            className="px-6 py-2.5 text-sm font-medium border border-white/30 hover:border-cyan-400 rounded-2xl transition-all active:bg-cyan-400/10 disabled:opacity-50"
           >
             Manage Billing
           </button>
@@ -185,7 +222,7 @@ export default function UnicornOSDashboard() {
           </div>
         </div>
 
-        {/* Results */}
+        {/* Results Section */}
         {(streamedText || result) && (
           <div className="mt-16 max-w-4xl mx-auto space-y-10">
             {streamedText && (
