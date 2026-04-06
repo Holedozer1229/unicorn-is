@@ -1,108 +1,155 @@
 import { z } from 'zod';
 
+export interface IdeaGraphNode {
+  id: string;
+  label: string;
+  type?: 'Market' | 'Technology' | 'BusinessModel' | 'Challenge' | 'Opportunity' | 'Other';
+}
+
+export interface IdeaGraphEdge {
+  source: string;
+  target: string;
+  weight: number;           // 0.0 - 1.0, higher = stronger relation
+  relation?: string;        // e.g., "enables", "targets", "dependsOn"
+}
+
 export interface IdeaGraph {
-  nodes: string[];
-  edges: Array<{ source: string; target: string; weight: number }>;
+  nodes: IdeaGraphNode[];
+  edges: IdeaGraphEdge[];
 }
 
-export interface HolographicOptions {
-  p?: number;           // QAOA layers / radial depth
-  lambdaHolo?: number;  // Weight of holographic regularization
-  maxIterations?: number;
-}
-
-export interface HolographicResult {
-  optimalScore: number;
-  optimalParams: number[];
-  insight: string;
-  holographicPenalty: number;
+export interface GraphDerivationOptions {
+  maxNodes?: number;
+  minEdgeWeight?: number;
+  includeDomainKeywords?: boolean;
 }
 
 /**
- * Derives a lightweight graph representation of the startup idea.
- * Nodes represent key concepts; edges represent implied relationships.
+ * Enhanced derivation of a graph representation from a startup idea.
+ * Nodes represent key concepts; edges capture semantic and contextual relationships.
+ * Optimized for holographic QAOA by emphasizing structural coherence and entanglement.
  */
-export function deriveIdeaGraph(idea: string): IdeaGraph {
-  const lowerIdea = idea.toLowerCase();
-  const stopWords = new Set(['the', 'a', 'an', 'and', 'or', 'to', 'for', 'with', 'in', 'on', 'of', 'is', 'are']);
+export function deriveIdeaGraph(
+  idea: string,
+  options: GraphDerivationOptions = {}
+): IdeaGraph {
+  const {
+    maxNodes = 12,
+    minEdgeWeight = 0.25,
+    includeDomainKeywords = true,
+  } = options;
 
-  // Extract potential concepts (simple heuristic; enhance with SphinxOS entity extraction)
-  const words = lowerIdea.split(/\s+/)
-    .filter(w => w.length > 3 && !stopWords.has(w))
-    .slice(0, 12);
+  const lowerIdea = idea.toLowerCase().trim();
 
-  const nodes = Array.from(new Set(words));
+  // Expanded startup-domain stop words and common noise
+  const stopWords = new Set([
+    'the', 'a', 'an', 'and', 'or', 'to', 'for', 'with', 'in', 'on', 'of', 'is', 'are',
+    'this', 'that', 'these', 'those', 'will', 'can', 'could', 'would', 'should',
+    'startup', 'idea', 'app', 'platform', 'service', 'product', // generic unless contextual
+  ]);
 
-  // Create edges between consecutive and randomly selected concepts
-  const edges: Array<{ source: string; target: string; weight: number }> = [];
-  for (let i = 0; i < nodes.length - 1; i++) {
-    edges.push({
-      source: nodes[i],
-      target: nodes[i + 1],
-      weight: 0.6 + Math.random() * 0.4,
-    });
-  }
-  // Add a few cross edges for richer structure
-  for (let i = 0; i < Math.floor(nodes.length / 3); i++) {
-    const a = Math.floor(Math.random() * nodes.length);
-    const b = (a + 3 + Math.floor(Math.random() * 4)) % nodes.length;
-    if (a !== b) {
-      edges.push({
-        source: nodes[a],
-        target: nodes[b],
-        weight: 0.3 + Math.random() * 0.5,
-      });
+  // Domain-specific booster keywords for startup ideas
+  const domainBoosters = includeDomainKeywords
+    ? new Set(['market', 'innovation', 'scalability', 'user', 'revenue', 'monetization', 'ai', 'tech', 'feasibility', 'viral', 'growth', 'competition'])
+    : new Set([]);
+
+  // Tokenize and extract candidate concepts
+  const tokens = lowerIdea
+    .replace(/[^\w\s]/g, ' ') // Remove punctuation
+    .split(/\s+/)
+    .filter((word) => word.length > 3 && !stopWords.has(word));
+
+  // Score and deduplicate concepts (frequency + domain boost)
+  const conceptScores = new Map<string, number>();
+  tokens.forEach((token, index) => {
+    const score = (conceptScores.get(token) || 0) + 1 + (domainBoosters.has(token) ? 2 : 0);
+    conceptScores.set(token, score);
+  });
+
+  // Select top concepts as nodes
+  let nodes: IdeaGraphNode[] = Array.from(conceptScores.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, maxNodes)
+    .map(([label], index) => ({
+      id: `node_${index}`,
+      label: label.charAt(0).toUpperCase() + label.slice(1),
+      type: inferNodeType(label),
+    }));
+
+  // Deduplicate by label (case-insensitive)
+  const uniqueLabels = new Set<string>();
+  nodes = nodes.filter((node) => {
+    const lowerLabel = node.label.toLowerCase();
+    if (uniqueLabels.has(lowerLabel)) return false;
+    uniqueLabels.add(lowerLabel);
+    return true;
+  });
+
+  // Build edges with semantic weighting
+  const edges: IdeaGraphEdge[] = [];
+  const nodeMap = new Map(nodes.map((n) => [n.label.toLowerCase(), n.id]));
+
+  for (let i = 0; i < tokens.length; i++) {
+    const sourceLabel = tokens[i];
+    const sourceId = nodeMap.get(sourceLabel);
+    if (!sourceId) continue;
+
+    // Proximity-based edges (co-occurrence within window)
+    for (let j = Math.max(0, i - 5); j < Math.min(tokens.length, i + 6); j++) {
+      if (i === j) continue;
+      const targetLabel = tokens[j];
+      const targetId = nodeMap.get(targetLabel);
+      if (!targetId || sourceId === targetId) continue;
+
+      const weight = calculateEdgeWeight(i, j, domainBoosters.has(sourceLabel) || domainBoosters.has(targetLabel));
+
+      if (weight >= minEdgeWeight) {
+        const existingEdge = edges.find(
+          (e) => (e.source === sourceId && e.target === targetId) || (e.source === targetId && e.target === sourceId)
+        );
+
+        if (existingEdge) {
+          existingEdge.weight = Math.max(existingEdge.weight, weight);
+        } else {
+          edges.push({
+            source: sourceId,
+            target: targetId,
+            weight: Math.min(1.0, weight),
+            relation: inferRelation(sourceLabel, targetLabel),
+          });
+        }
+      }
     }
   }
 
   return { nodes, edges };
 }
 
-/**
- * Runs a simplified Holographic QAOA on the idea graph.
- * Approximates tensor network contraction with variational parameters and holographic regularization.
- */
-export async function runHolographicQAOA(
-  graph: IdeaGraph,
-  options: HolographicOptions = {}
-): Promise<HolographicResult> {
-  const { p = 3, lambdaHolo = 0.12, maxIterations = 150 } = options;
+/** Simple heuristic for node type classification (expandable via SphinxOS prompt). */
+function inferNodeType(label: string): IdeaGraphNode['type'] {
+  const lower = label.toLowerCase();
+  if (['market', 'customer', 'user', 'audience'].some((k) => lower.includes(k))) return 'Market';
+  if (['ai', 'tech', 'algorithm', 'platform', 'app'].some((k) => lower.includes(k))) return 'Technology';
+  if (['revenue', 'monetization', 'business', 'model'].some((k) => lower.includes(k))) return 'BusinessModel';
+  if (['challenge', 'problem', 'risk', 'competition'].some((k) => lower.includes(k))) return 'Challenge';
+  return 'Opportunity';
+}
 
-  // Base energy from graph structure (proxy for problem Hamiltonian expectation)
-  const baseEnergy = 40 + (graph.nodes.length * 3.5) + (graph.edges.length * 1.8);
+/** Calculate edge weight based on proximity and domain relevance. */
+function calculateEdgeWeight(pos1: number, pos2: number, isDomainBoosted: boolean): number {
+  const distance = Math.abs(pos1 - pos2);
+  let weight = Math.max(0.1, 1.0 - distance / 8); // Closer = stronger
+  if (isDomainBoosted) weight += 0.25;
+  return Math.min(1.0, weight);
+}
 
-  // Simulate variational optimization (replace with real TN contraction + optimizer in production)
-  let bestScore = baseEnergy;
-  let bestParams: number[] = [];
-  let holographicPenalty = 0;
-
-  for (let iter = 0; iter < maxIterations; iter++) {
-    const params = Array.from({ length: 2 * p }, () => Math.random() * 2 * Math.PI);
-
-    // Approximate holographic penalty (e.g., via average "cut" or bond entropy proxy)
-    const penalty = (graph.edges.length / (graph.nodes.length + 1)) * 8 + Math.random() * 5;
-    holographicPenalty = penalty;
-
-    const energy = baseEnergy + Math.sin(params.reduce((sum, v) => sum + v, 0)) * 12;
-
-    const totalCost = energy + lambdaHolo * penalty;
-
-    if (totalCost < bestScore) {
-      bestScore = totalCost;
-      bestParams = params;
-    }
-  }
-
-  const optimalScore = Math.max(15, Math.min(95, Math.round(100 - bestScore + 20)));
-
-  const insight = graph.nodes.length > 6
-    ? 'Strong conceptual entanglement detected in the holographic bulk – high innovation coherence.'
-    : 'Sparse holographic geometry observed. Expanding key market or feasibility nodes may improve optimization.';
-
-  return {
-    optimalScore,
-    optimalParams: bestParams.slice(0, 6), // Limit for response brevity
-    insight,
-    holographicPenalty: Math.round(holographicPenalty * 10) / 10,
+/** Infer basic relation type (expand with SphinxOS for richer semantics). */
+function inferRelation(source: string, target: string): string {
+  const pairs: Record<string, string> = {
+    'market': 'targets',
+    'user': 'serves',
+    'ai': 'enables',
+    'revenue': 'generates',
   };
+  return pairs[source] || pairs[target] || 'relatesTo';
 }
