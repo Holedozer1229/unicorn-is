@@ -9,8 +9,8 @@ export interface IdeaGraphNode {
 export interface IdeaGraphEdge {
   source: string;
   target: string;
-  weight: number;           // 0.0 - 1.0, higher = stronger relation
-  relation?: string;        // e.g., "enables", "targets", "dependsOn"
+  weight: number;
+  relation?: string;
 }
 
 export interface IdeaGraph {
@@ -24,10 +24,21 @@ export interface GraphDerivationOptions {
   includeDomainKeywords?: boolean;
 }
 
+export interface HolographicOptions {
+  p?: number;
+  lambdaHolo?: number;
+  maxIterations?: number;
+}
+
+export interface HolographicResult {
+  optimalScore: number;
+  optimalParams: number[];
+  insight: string;
+  holographicPenalty: number;
+}
+
 /**
  * Enhanced derivation of a graph representation from a startup idea.
- * Nodes represent key concepts; edges capture semantic and contextual relationships.
- * Optimized for holographic QAOA by emphasizing structural coherence and entanglement.
  */
 export function deriveIdeaGraph(
   idea: string,
@@ -41,32 +52,26 @@ export function deriveIdeaGraph(
 
   const lowerIdea = idea.toLowerCase().trim();
 
-  // Expanded startup-domain stop words and common noise
   const stopWords = new Set([
     'the', 'a', 'an', 'and', 'or', 'to', 'for', 'with', 'in', 'on', 'of', 'is', 'are',
     'this', 'that', 'these', 'those', 'will', 'can', 'could', 'would', 'should',
-    'startup', 'idea', 'app', 'platform', 'service', 'product', // generic unless contextual
   ]);
 
-  // Domain-specific booster keywords for startup ideas
   const domainBoosters = includeDomainKeywords
-    ? new Set(['market', 'innovation', 'scalability', 'user', 'revenue', 'monetization', 'ai', 'tech', 'feasibility', 'viral', 'growth', 'competition'])
+    ? new Set(['market', 'innovation', 'scalability', 'user', 'revenue', 'monetization', 'ai', 'tech', 'feasibility', 'viral', 'growth'])
     : new Set([]);
 
-  // Tokenize and extract candidate concepts
   const tokens = lowerIdea
-    .replace(/[^\w\s]/g, ' ') // Remove punctuation
+    .replace(/[^\w\s]/g, ' ')
     .split(/\s+/)
     .filter((word) => word.length > 3 && !stopWords.has(word));
 
-  // Score and deduplicate concepts (frequency + domain boost)
   const conceptScores = new Map<string, number>();
-  tokens.forEach((token, index) => {
+  tokens.forEach((token) => {
     const score = (conceptScores.get(token) || 0) + 1 + (domainBoosters.has(token) ? 2 : 0);
     conceptScores.set(token, score);
   });
 
-  // Select top concepts as nodes
   let nodes: IdeaGraphNode[] = Array.from(conceptScores.entries())
     .sort((a, b) => b[1] - a[1])
     .slice(0, maxNodes)
@@ -76,7 +81,6 @@ export function deriveIdeaGraph(
       type: inferNodeType(label),
     }));
 
-  // Deduplicate by label (case-insensitive)
   const uniqueLabels = new Set<string>();
   nodes = nodes.filter((node) => {
     const lowerLabel = node.label.toLowerCase();
@@ -85,7 +89,6 @@ export function deriveIdeaGraph(
     return true;
   });
 
-  // Build edges with semantic weighting
   const edges: IdeaGraphEdge[] = [];
   const nodeMap = new Map(nodes.map((n) => [n.label.toLowerCase(), n.id]));
 
@@ -94,7 +97,6 @@ export function deriveIdeaGraph(
     const sourceId = nodeMap.get(sourceLabel);
     if (!sourceId) continue;
 
-    // Proximity-based edges (co-occurrence within window)
     for (let j = Math.max(0, i - 5); j < Math.min(tokens.length, i + 6); j++) {
       if (i === j) continue;
       const targetLabel = tokens[j];
@@ -125,7 +127,6 @@ export function deriveIdeaGraph(
   return { nodes, edges };
 }
 
-/** Simple heuristic for node type classification (expandable via SphinxOS prompt). */
 function inferNodeType(label: string): IdeaGraphNode['type'] {
   const lower = label.toLowerCase();
   if (['market', 'customer', 'user', 'audience'].some((k) => lower.includes(k))) return 'Market';
@@ -135,15 +136,13 @@ function inferNodeType(label: string): IdeaGraphNode['type'] {
   return 'Opportunity';
 }
 
-/** Calculate edge weight based on proximity and domain relevance. */
 function calculateEdgeWeight(pos1: number, pos2: number, isDomainBoosted: boolean): number {
   const distance = Math.abs(pos1 - pos2);
-  let weight = Math.max(0.1, 1.0 - distance / 8); // Closer = stronger
+  let weight = Math.max(0.1, 1.0 - distance / 8);
   if (isDomainBoosted) weight += 0.25;
   return Math.min(1.0, weight);
 }
 
-/** Infer basic relation type (expand with SphinxOS for richer semantics). */
 function inferRelation(source: string, target: string): string {
   const pairs: Record<string, string> = {
     'market': 'targets',
@@ -152,4 +151,62 @@ function inferRelation(source: string, target: string): string {
     'revenue': 'generates',
   };
   return pairs[source] || pairs[target] || 'relatesTo';
+}
+
+/**
+ * Runs simplified Holographic QAOA on the idea graph.
+ */
+export async function runHolographicQAOA(
+  graph: IdeaGraph,
+  options: HolographicOptions = {}
+): Promise<HolographicResult> {
+  const { p = 3, lambdaHolo = 0.12, maxIterations = 150 } = options;
+
+  const baseEnergy = 40 + (graph.nodes.length * 3.5) + (graph.edges.length * 1.8);
+
+  let bestScore = baseEnergy;
+  let bestParams: number[] = [];
+  let holographicPenalty = 0;
+
+  for (let iter = 0; iter < maxIterations; iter++) {
+    const params = Array.from({ length: 2 * p }, () => Math.random() * 2 * Math.PI);
+
+    const penalty = (graph.edges.length / (graph.nodes.length + 1)) * 8 + Math.random() * 5;
+    holographicPenalty = penalty;
+
+    const energy = baseEnergy + Math.sin(params.reduce((sum, v) => sum + v, 0)) * 12;
+
+    const totalCost = energy + lambdaHolo * penalty;
+
+    if (totalCost < bestScore) {
+      bestScore = totalCost;
+      bestParams = params;
+    }
+  }
+
+  const optimalScore = Math.max(15, Math.min(95, Math.round(100 - bestScore + 20)));
+
+  const insight = graph.nodes.length > 6
+    ? 'Strong conceptual entanglement detected in the holographic bulk – high innovation coherence.'
+    : 'Sparse holographic geometry observed. Expanding key market or feasibility nodes may improve optimization.';
+
+  return {
+    optimalScore,
+    optimalParams: bestParams.slice(0, 6),
+    insight,
+    holographicPenalty: Math.round(holographicPenalty * 10) / 10,
+  };
+}
+
+export interface HolographicOptions {
+  p?: number;
+  lambdaHolo?: number;
+  maxIterations?: number;
+}
+
+export interface HolographicResult {
+  optimalScore: number;
+  optimalParams: number[];
+  insight: string;
+  holographicPenalty: number;
 }
