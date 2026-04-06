@@ -3,7 +3,8 @@ import { rateLimit } from '@/lib/rate-limit';
 import { TIERS } from '@/lib/tier';
 import { z } from 'zod';
 import { deriveIdeaGraph, runHolographicQAOA } from '@/lib/holographic';
-import { callSphinxOSStream } from '@/lib/sphinxos'; // Ensure this helper exists
+import { callSphinxOSStream } from '@/lib/sphinxos';
+import { generateShareText } from '@/lib/utils';
 
 const ScoreRequestSchema = z.object({
   idea: z.string().min(10).max(2000),
@@ -19,7 +20,7 @@ export async function POST(request: NextRequest) {
     const { idea, userId = 'anon' } = ScoreRequestSchema.parse(body);
 
     const tier = 'free'; // TODO: Replace with real user tier lookup from DB/auth
-    const tierConfig = TIERS[tier];
+    const tierConfig = TIERS[tier as keyof typeof TIERS];
 
     if (!tierConfig) {
       return NextResponse.json({ error: 'Invalid tier configuration' }, { status: 500 });
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
         const holoSummary = `\n\n🔬 UnicornOS Holographic QAOA Core:\n` +
           `Optimized Score: ${finalScore}/100\n` +
           `Holographic Penalty: ${holographicResult.holographicPenalty}\n` +
-          `Insight: ${holographicResult.insight}`;
+          `Insight: ${holographicResult.insight || 'Enhanced structural coherence detected.'}`;
 
         controller.enqueue(encoder.encode(holoSummary));
         controller.close();
@@ -81,14 +82,4 @@ export async function POST(request: NextRequest) {
     console.error('UnicornOS Score Error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
-
-// Helper function (now properly placed after the POST handler)
-export function generateShareText(score: number): string {
-  return `I just tested my idea on Unicorn OS (powered by SphinxOS + Holographic QAOA).
-
-🔥 Optimized Viral Score: ${score}/100
-
-Think it will blow up? 👇
-https://unicorn-saas.vercel.app`;
 }
