@@ -1,33 +1,20 @@
-import { getAIGenerationCount, trackAIGeneration } from "@/lib/redis"
-import { TIERS } from "@/lib/billing/tiers"
+export function enforceAICap(
+  tier: string,
+  usage: number,
+  tokens: number
+) {
+  const limits = {
+    free: 10,
+    creator: 100,
+    pro: 1000,
+  };
 
-// NOTE: in production this should come from DB synced via Stripe webhook
-function getUserTier(): "free" | "pro" | "enterprise" {
-  return "free"
+  if (usage >= limits[tier as keyof typeof limits]) {
+    return { allowed: false, reason: "Daily limit reached" };
+  }
+
+  return { allowed: true };
 }
-
-export async function enforceLimit(userId: string) {
-  const tier = getUserTier()
-  const limits = TIERS[tier]
-
-  if (limits.aiGenerationsPerMonth === -1) {
-    await trackAIGeneration(userId)
-    return { allowed: true }
-  }
-
-  const used = await getAIGenerationCount(userId)
-  const remaining = limits.aiGenerationsPerMonth - used
-
-  if (remaining <= 0) {
-    return {
-      allowed: false,
-      error: "Upgrade required (Stripe enforced limit reached)",
-    }
-  }
-
-  await trackAIGeneration(userId)
-
-  return {
     allowed: true,
     remaining: remaining - 1,
   }
