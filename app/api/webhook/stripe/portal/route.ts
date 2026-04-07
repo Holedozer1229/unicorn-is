@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
 
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: customerId,
-      return_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://unicorn-saas.vercel.app'}/dashboard`,
+      return_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/dashboard`,
     });
 
     return NextResponse.json({ url: portalSession.url });

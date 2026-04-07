@@ -11,6 +11,9 @@
   },
   "dependencies": {
     "@ai-sdk/react": "^3.0.0",
+    "@ai-sdk/openai": "^1.2.0",
+    "@vercel/og": "^0.8.4",
+    "openai": "^4.86.2",
 
     "@radix-ui/react-avatar": "^1.1.2",
     "@radix-ui/react-dialog": "^1.1.4",

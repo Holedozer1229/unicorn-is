@@ -20,7 +20,7 @@ export function generateShareText(score: number): string {
 🔥 Optimized Viral Score: ${score}/100
 
 Think it will blow up? 👇
-https://unicorn-saas.vercel.app`;
+${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}`;
 }
 
 /* ==========================================================================

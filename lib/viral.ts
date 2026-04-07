@@ -10,6 +10,6 @@ export function buildViralCard(input: {
       input.score > 80
         ? "This idea is engineered to go viral."
         : "This idea needs optimization before posting.",
-    cta: "Try your idea → unicorn-os.vercel.app",
+    cta: `Try your idea → ${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}`,
   };
 }
