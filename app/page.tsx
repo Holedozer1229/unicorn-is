@@ -46,7 +46,7 @@ function Counter({ to, suffix = "" }: { to: number; suffix?: string }) {
   }, [to])
   return <span ref={ref}>{val >= 1000 ? (val / 1000).toFixed(val >= 100000 ? 0 : 1) + "K" : val}{suffix}</span>
 }
-const WORDS = ["Creators", "Models", "Influencers", "Artists", "Podcasters"]
+const WORDS = ["Creators","Models","Influencers","Podcasters","Streamers","Artists"]
 
 export default function HomePage() {
   const [mouse, setMouse] = useState({ x: -999, y: -999 })
@@ -147,47 +147,64 @@ export default function HomePage() {
 
             </div>
 
+            {/* Platform pills */}
+            <div className="flex flex-wrap justify-center gap-2 mb-7">
+              {["YouTube","OnlyFans","TikTok","Instagram","Twitch","Patreon"].map(pl=>(
+                <span key={pl} className="px-3 py-1 text-[10px] font-mono tracking-wider rounded-full border border-white/10 text-white/30 bg-white/[0.03] uppercase">{pl}</span>
+              ))}
+            </div>
+
             {/* Live badge */}
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[rgba(0,200,255,0.28)] bg-[rgba(0,200,255,0.07)] mb-10 text-xs font-mono tracking-[0.2em] text-[#00d4ff] uppercase">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00d4ff] opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-[#00d4ff]" />
               </span>
-              Intelligence OS — Live
+              42,000+ Creators Already Inside
             </div>
 
             {/* Headline */}
             <h1 className="mx-auto mb-4 max-w-5xl font-black tracking-tight leading-[1.04]" style={{ fontSize: "clamp(2.8rem,8vw,6.5rem)" }}>
-              <span className="text-white block">The OS Powering</span>
+              <span className="text-white block">The OS Built For</span>
               <span
                 className="text-gradient block"
-                style={{ minWidth: "8ch", display: "block", opacity: wordIn ? 1 : 0, transform: wordIn ? "translateY(0)" : "translateY(12px)", transition: "opacity 0.38s ease, transform 0.38s ease" }}
+                style={{ display:"block", opacity: wordIn ? 1 : 0, transform: wordIn ? "translateY(0)" : "translateY(12px)", transition: "opacity 0.38s ease, transform 0.38s ease" }}
               >
                 {WORDS[wordIdx]}
               </span>
             </h1>
 
-            <p className="mx-auto mb-12 max-w-lg text-white/45 leading-relaxed" style={{ fontSize: "clamp(1rem,2vw,1.2rem)" }}>
-              Whether you create on YouTube, OnlyFans, TikTok, Instagram, or any platform — UnicornOS is the AI engine that grows your audience and maximizes your income.
-            </p>
+            <p className="mx-auto mb-3 max-w-2xl font-semibold text-white/65 leading-snug" style={{ fontSize: "clamp(1.1rem,2.2vw,1.35rem)" }}>Post everywhere. Earn everywhere. Automate everything.</p>
+            <p className="mx-auto mb-12 max-w-xl text-white/35 leading-relaxed text-base">UnicornOS is the AI engine powering creators on YouTube, OnlyFans, TikTok, Instagram, Twitch and beyond — turning your content into a real, scalable business.</p>
 
             {/* CTAs */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
               <Button asChild size="lg" className="group bg-[#00d4ff] hover:bg-[#00bde8] text-[#04040f] font-black text-base rounded-full px-10 h-14 shadow-[0_0_40px_rgba(0,212,255,0.5)] hover:shadow-[0_0_65px_rgba(0,212,255,0.75)] transition-all hover:scale-105">
-                <Link href="/auth/sign-up">Launch Your OS <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" /></Link>
+                <Link href="/auth/sign-up">Launch Your OS Free <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" /></Link>
               </Button>
               <Button asChild variant="ghost" size="lg" className="text-white/55 hover:text-white rounded-full px-8 h-14 border border-white/10 hover:border-[rgba(0,200,255,0.3)] hover:bg-[rgba(0,200,255,0.04)] transition-all">
                 <Link href="#features"><Play className="mr-2 h-4 w-4 fill-current" /> See How It Works</Link>
               </Button>
             </div>
 
+            {/* Social proof */}
+            <div className="flex flex-wrap items-center justify-center gap-4 mb-14">
+              <div className="flex -space-x-2">
+                {["#00d4ff","#c084fc","#34d399","#fbbf24","#f472b6"].map((col,i)=>(
+                  <div key={i} className="h-8 w-8 rounded-full border-2 flex items-center justify-center text-[9px] font-black" style={{background:"linear-gradient(135deg,"+col+"33,"+col+"11)",borderColor:col+"55",color:col}}>{["YT","OF","TK","IG","TW"][i]}</div>
+                ))}
+              </div>
+              <span className="text-white/30 text-xs font-mono">Join 42,000+ creators already earning more</span>
+              <span className="text-[#34d399] text-xs font-mono font-bold">&#8593; $18M+ generated</span>
+            </div>
+
             {/* Live HUD metrics */}
             <div className="flex flex-wrap justify-center gap-4">
               {[
-                { v: "0.91", l: "USAGE SCORE",     c: "#fbbf24" },
-                { v: "18.2", l: "ERGOTROPY INDEX",  c: "#00d4ff" },
-                { v: "42",   l: "AI JOBS LIVE",    c: "#a78bfa" },
-                { v: "99.9%",l: "UPTIME",          c: "#34d399" },
+                { v: "42K+",  l: "Active Creators",  c: "#00d4ff" },
+                { v: "$18M+", l: "Revenue Generated", c: "#fbbf24" },
+                { v: "50+",   l: "Platforms",         c: "#a78bfa" },
+                { v: "99.9%", l: "Uptime",            c: "#34d399" },
               ].map(({ v, l, c }) => (
                 <div key={l} className="hud-card flex items-center gap-3 px-5 py-3 rounded-2xl">
                   <span className="text-xl font-black font-mono" style={{ color: c }}>{v}</span>
