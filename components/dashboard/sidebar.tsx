@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { TIER_LIMITS } from "@/lib/types"
-import { LayoutDashboard, Lightbulb, Calendar, DollarSign, BarChart3, Settings, Crown, Zap } from "lucide-react"
+import { LayoutDashboard, Lightbulb, Calendar, DollarSign, BarChart3, Settings, Crown, Zap, MessageCircle } from "lucide-react"
 import UnicornOSLogo from "@/components/ui/UnicornOSLogo"
 
 interface SidebarProps { user: User; profile: Profile | null; subscription: Subscription | null }
@@ -17,6 +17,7 @@ interface SidebarProps { user: User; profile: Profile | null; subscription: Subs
 const navItems = [
   { title: "Dashboard",      href: "/dashboard",              icon: LayoutDashboard },
   { title: "Content Engine", href: "/dashboard/content",      icon: Lightbulb },
+  { title: "Sphinx Oracle",  href: "/dashboard/sphinx-chat",  icon: MessageCircle },
   { title: "Planner",        href: "/dashboard/planner",      icon: Calendar },
   { title: "Monetization",   href: "/dashboard/monetization", icon: DollarSign },
   { title: "Analytics",      href: "/dashboard/analytics",    icon: BarChart3 },
