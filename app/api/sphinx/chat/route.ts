@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
 import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
-import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "edge";
 
@@ -37,17 +36,6 @@ export async function POST(req: NextRequest) {
       return new Response(
         JSON.stringify({ error: "Message required" }),
         { status: 400 }
-      );
-    }
-
-    // 🔐 AUTH
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401 }
       );
     }
 
